@@ -38,10 +38,10 @@ if ENV['PROJECT_ENV'] == 'development'
 else
   Mail.defaults do
     delivery_method :smtp,
-                    address: 'smtp.gmail.com',
+                    address: ENV['EMAIL_ADDRESS'],
                     port: '587',
-                    user_name: ENV['GMAIL_USER'],
-                    password: ENV['GMAIL_PASSWORD'],
+                    user_name: ENV['EMAIL_USER'],
+                    password: ENV['EMAIL_PASSWORD'],
                     authentication: :plain,
                     enable_starttls_auto: true
   end
