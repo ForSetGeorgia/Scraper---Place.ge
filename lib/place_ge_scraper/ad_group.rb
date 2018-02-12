@@ -229,7 +229,7 @@ class PlaceGeAdGroup
     error_body = @error_report.join("\n").gsub('<', '').gsub('>', '')
 
     error_mail = Mail.new do
-      from ENV['GMAIL_USER']
+      from ENV['EMAIL_USER']
       to ENV['ERROR_RECEIVER_EMAIL']
       subject 'Place.Ge Scraper Errors'
       body error_body
