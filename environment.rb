@@ -38,10 +38,10 @@ if ENV['PROJECT_ENV'] == 'development'
 else
   Mail.defaults do
     delivery_method :smtp,
-                    address: ENV['EMAIL_ADDRESS'],
+                    address: ENV['FEEDBACK_SMTP_ADDRESS'],
                     port: '587',
-                    user_name: ENV['EMAIL_USER'],
-                    password: ENV['EMAIL_PASSWORD'],
+                    user_name: ENV['FEEDBACK_SMTP_AUTH_USER'],
+                    password: ENV['FEEDBACK_SMTP_AUTH_PASSWORD'],
                     authentication: :plain,
                     enable_starttls_auto: true
   end
