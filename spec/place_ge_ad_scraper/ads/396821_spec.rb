@@ -1,7 +1,7 @@
 test_place_ge_ad(
   396821,
   place_ge_id: 396821,
-  link: "http://place.ge/en/ads/view/396821",
+  link: "https://place.ge/en/ads/view/396821",
   publication_date: Date.new(2016, 5, 28),
   deal_type: 'to_buy',
   property_type: 'land',

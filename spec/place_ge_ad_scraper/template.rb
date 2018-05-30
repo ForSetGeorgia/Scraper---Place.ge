@@ -1,7 +1,7 @@
 test_place_ge_ad(
   id,
   place_ge_id: id,
-  link: "http://place.ge/en/ads/view/#{id}",
+  link: "https://place.ge/en/ads/view/#{id}",
   publication_date: nil,
   deal_type: nil,
   property_type: nil,

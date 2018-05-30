@@ -1,7 +1,7 @@
 test_place_ge_ad(
   404_046,
   place_ge_id: 404_046,
-  link: 'http://place.ge/en/ads/view/404046',
+  link: 'https://place.ge/en/ads/view/404046',
   publication_date: Date.new(2016, 4, 19),
   deal_type: 'for_sale',
   property_type: 'summer_house',

@@ -1,7 +1,7 @@
 test_place_ge_ad(
   467_231,
   place_ge_id: 467_231,
-  link: "http://place.ge/en/ads/view/467231",
+  link: "https://place.ge/en/ads/view/467231",
   publication_date: Date.new(2016, 5, 28),
   deal_type: 'to_rent',
   property_type: 'flat',

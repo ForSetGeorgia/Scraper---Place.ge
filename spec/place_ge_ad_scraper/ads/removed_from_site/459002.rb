@@ -1,7 +1,7 @@
 test_place_ge_ad(
   459_002,
   place_ge_id: 459_002,
-  link: 'http://place.ge/en/ads/view/459002',
+  link: 'https://place.ge/en/ads/view/459002',
   publication_date: Date.new(2015, 9, 3),
   deal_type: 'for_sale',
   property_type: 'flat',

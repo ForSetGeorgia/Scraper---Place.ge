@@ -1,7 +1,7 @@
 test_place_ge_ad(
   476480,
   place_ge_id: 476480,
-  link: "http://place.ge/en/ads/view/#{476480}",
+  link: "https://place.ge/en/ads/view/#{476480}",
   publication_date: Date.new(2015, 9, 30),
   deal_type: 'to_lease',
   property_type: 'flat',

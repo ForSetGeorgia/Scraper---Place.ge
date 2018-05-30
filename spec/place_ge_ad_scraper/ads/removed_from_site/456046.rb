@@ -1,7 +1,7 @@
 test_place_ge_ad(
   456046,
   place_ge_id: 456046,
-  link: "http://place.ge/en/ads/view/#{456046}",
+  link: "https://place.ge/en/ads/view/#{456046}",
   publication_date: Date.new(2015, 11, 4),
   deal_type: 'to_buy',
   property_type: 'land',

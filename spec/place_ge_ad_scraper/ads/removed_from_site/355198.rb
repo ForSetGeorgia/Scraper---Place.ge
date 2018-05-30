@@ -1,7 +1,7 @@
 test_place_ge_ad(
   355_198,
   place_ge_id: 355_198,
-  link: 'http://place.ge/en/ads/view/355198',
+  link: 'https://place.ge/en/ads/view/355198',
   publication_date: Date.new(2015, 6, 2),
   deal_type: 'for_sale',
   property_type: 'private_house',

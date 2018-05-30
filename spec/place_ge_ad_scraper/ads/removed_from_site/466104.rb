@@ -1,7 +1,7 @@
 test_place_ge_ad(
   466_104,
   place_ge_id: 466_104,
-  link: 'http://place.ge/en/ads/view/466104',
+  link: 'https://place.ge/en/ads/view/466104',
   publication_date: Date.new(2015, 9, 11),
   deal_type: 'for_rent',
   property_type: 'commercial_estate',

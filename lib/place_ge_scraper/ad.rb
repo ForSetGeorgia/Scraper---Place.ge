@@ -602,7 +602,7 @@ class PlaceGeAd
   # Class-level Helper Functions #
 
   def self.link_for_id(place_ge_id)
-    "http://place.ge/en/ads/view/#{place_ge_id}"
+    "https://place.ge/en/ads/view/#{place_ge_id}"
   end
 
   ########################################################################

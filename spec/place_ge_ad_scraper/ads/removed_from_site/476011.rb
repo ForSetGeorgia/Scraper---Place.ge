@@ -1,7 +1,7 @@
 test_place_ge_ad(
   476_011,
   place_ge_id: 476_011,
-  link: "http://place.ge/en/ads/view/476011",
+  link: "https://place.ge/en/ads/view/476011",
   publication_date: Date.new(2015, 9, 30),
   deal_type: 'to_buy',
   property_type: 'flat',
