@@ -74,7 +74,8 @@ class PlaceGeAdGroup
     end
 
     while not_finished_scraping_ids?
-      link = "https://place.ge/ge/ads/page:#{page_num}?object_type=all&currency_id=2&mode=list&order_by=date&limit=#{limit}"
+      # puts "- ad ids page #{page_num}; ad ids = #{@ad_ids.size}"
+      link = "https://place.ge/ge/ads/page:#{page_num}/limit:#{limit}?object_type=all&currency_id=2&mode=list&order_by=date"
       scrape_and_save_ad_ids_from_page(link)
       page_num += 1
     end
