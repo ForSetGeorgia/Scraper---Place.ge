@@ -65,8 +65,10 @@ class PlaceGeAdGroup
     @ad_ids = []
     page_num = 1
 
-    if @ad_limit.nil? || @ad_limit > 1000
-      limit = 1000
+    # if @ad_limit.nil? || @ad_limit > 1000
+    #   limit = 1000
+    if @ad_limit.nil? || @ad_limit > 500
+      limit = 500
     elsif @ad_limit < 100
       limit = 100
     else
