@@ -80,7 +80,7 @@ namespace :scraper do
   task :scrape_ad_ids_posted_last_month do
     ScraperLog.logger.info "INVOKED TASK: scrape_ad_ids_posted_last_month"
 
-    PlaceGeAdGroup.new(*previous_month_start_and_end_dates(Date.today), nil)
+    PlaceGeAdGroup.new(*previous_month_start_and_end_dates(Date.today-3), nil)
       .run(&:scrape_and_save_ad_ids)
   end
 
@@ -127,7 +127,7 @@ namespace :scraper do
   task :export_last_month_ads_to_iset_csv do
     ScraperLog.logger.info 'INVOKED TASK: export_last_month_ads_to_iset_csv'
 
-    Ad.to_iset_csv(*previous_month_start_and_end_dates(Date.today), false)
+    Ad.to_iset_csv(*previous_month_start_and_end_dates(Date.today-3), false)
   end
 
   desc 'Output subset of ad data to CSV for analysis by ISET; parameters should be in format [yyyy-mm-dd,yyyy-mm-dd,with_duplicate(boolean)]'
@@ -172,7 +172,7 @@ namespace :scraper do
   task :find_duplicates_last_month do
     ScraperLog.logger.info 'INVOKED TASK: find_duplicates_last_month'
 
-    last_month = Date.today.last_month
+    last_month = (Date.today-3).last_month
 
     AdEntry.identify_duplicates_for_month_year(
       last_month.month,
