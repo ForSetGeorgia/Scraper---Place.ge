@@ -63,8 +63,7 @@ class PlaceGeAdGroup
     @finished_scraping_ids = false
     @found_simple_ad_box = false
     @ad_ids = []
-    # page_num = 1
-    page_num = 169
+    page_num = 1
 
     if @ad_limit.nil? || @ad_limit > 1000
       limit = 1000
