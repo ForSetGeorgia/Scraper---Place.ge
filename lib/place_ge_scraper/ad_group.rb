@@ -63,12 +63,11 @@ class PlaceGeAdGroup
     @finished_scraping_ids = false
     @found_simple_ad_box = false
     @ad_ids = []
-    page_num = 1
+    # page_num = 1
+    page_num = 169
 
-    # if @ad_limit.nil? || @ad_limit > 1000
-    #   limit = 1000
-    if @ad_limit.nil? || @ad_limit > 500
-      limit = 500
+    if @ad_limit.nil? || @ad_limit > 1000
+      limit = 1000
     elsif @ad_limit < 100
       limit = 100
     else
@@ -88,24 +87,34 @@ class PlaceGeAdGroup
   def scrape_and_save_ad_ids_from_page(link)
     ScraperLog.logger.info "Retrieving #{link}"
     begin
+      retries ||= 0
+
       page = Nokogiri.HTML(open(link))
     rescue StandardError => error
       error_msg = "Error while scraping ad ids from #{link}: #{error.inspect}"
       ScraperLog.logger.error error_msg
       @errors.push error_msg
+
+      # 502 error is often thrown so let's retry just in case the page will load this time
+      retry if (retries += 1) < 3
+
       return false
     end
 
     ScraperLog.logger.info "Data successfully retrieved from #{link}"
     ScraperLog.logger.info "Scraping #{link}"
 
+    # get all ads on page
     ad_boxes = page.css('.tr-line')
 
-    ad_boxes.each do |ad_box_html|
-      process_ad_box(PlaceGeAdBox.new(ad_box_html))
+    if !ad_boxes.nil? && ad_boxes.length > 0
+      # process each ad
+      ad_boxes.each do |ad_box_html|
+        process_ad_box(PlaceGeAdBox.new(ad_box_html))
 
-      # If finished, don't scrape the rest of the ad boxes
-      break if finished_scraping_ids?
+        # If finished, don't scrape the rest of the ad boxes
+        break if finished_scraping_ids?
+      end
     end
 
     ScraperLog.logger.info "Found #{@ad_ids.size} ads posted #{dates_to_s} so far"
