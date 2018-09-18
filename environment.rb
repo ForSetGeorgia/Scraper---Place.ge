@@ -29,13 +29,7 @@ ActiveSupport::Inflector.inflections do |inflect|
 end
 
 # Set up delivery defaults to use Gmail
-if ENV['PROJECT_ENV'] == 'development'
-  Mail.defaults do
-    delivery_method :smtp,
-                    address: 'localhost',
-                    port: 1025
-  end
-else
+if ENV['PROJECT_ENV'] == 'production'
   Mail.defaults do
     delivery_method :smtp,
                     address: ENV['FEEDBACK_SMTP_ADDRESS'],
@@ -44,5 +38,11 @@ else
                     password: ENV['FEEDBACK_SMTP_AUTH_PASSWORD'],
                     authentication: :plain,
                     enable_starttls_auto: true
+  end
+else
+  Mail.defaults do
+    delivery_method :smtp,
+                    address: 'localhost',
+                    port: 1025
   end
 end
