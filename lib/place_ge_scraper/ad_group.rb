@@ -63,19 +63,23 @@ class PlaceGeAdGroup
     @finished_scraping_ids = false
     @found_simple_ad_box = false
     @ad_ids = []
-    page_num = 1
+    # 2019-01 - place.ge changed the url so that page:1 no longer exists
+    # so we have to start with page 2
+    page_num = 2 #1
+    max_page_limit = 750
+    min_page_limit = 100
 
-    if @ad_limit.nil? || @ad_limit > 1000
-      limit = 1000
-    elsif @ad_limit < 100
-      limit = 100
+    if @ad_limit.nil? || @ad_limit > max_page_limit
+      limit = max_page_limit
+    elsif @ad_limit < min_page_limit
+      limit = min_page_limit
     else
       limit = @ad_limit
     end
 
     while not_finished_scraping_ids?
       # puts "- ad ids page #{page_num}; ad ids = #{@ad_ids.size}"
-      link = "https://place.ge/ge/ads/page:#{page_num}/limit:#{limit}?object_type=all&currency_id=2&mode=list&order_by=date"
+      link = "https://place.ge/ge/ads/page:#{page_num}?limit=#{limit}&object_type=all&currency_id=2&mode=list&order_by=date"
       scrape_and_save_ad_ids_from_page(link)
       page_num += 1
     end
