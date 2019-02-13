@@ -92,7 +92,10 @@ class PlaceGeAdGroup
     begin
       retries ||= 0
 
-      page = Nokogiri.HTML(open(link, {ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE}))
+      page = Nokogiri.HTML(open(link, {
+        "User-Agent" => "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36",
+        ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE
+      }))
     rescue StandardError => error
       error_msg = "Error while scraping ad ids from #{link}: #{error.inspect}"
       ScraperLog.logger.error error_msg
