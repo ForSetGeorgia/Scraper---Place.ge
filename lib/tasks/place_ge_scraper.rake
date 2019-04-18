@@ -10,16 +10,16 @@ namespace :scraper do
     # Tasks for calling main scrape tasks together #
 
     desc 'Perform monthly scrape tasks'
-    task :last_month do
-      ScraperLog.logger.info 'INVOKED TASK: main_scrape_tasks:last_month'
+    task :previous_month, [:optional_number_months_ago] do |_t, args|
+      ScraperLog.logger.info 'INVOKED TASK: main_scrape_tasks:previous_month'
 
       Proxy.update_proxy_list
 
-      Rake.application.invoke_task('scraper:scrape_ad_ids_posted_last_month')
+      Rake.application.invoke_task("scraper:scrape_ad_ids_posted_previous_month[#{args[:optional_number_months_ago]}]")
       Rake.application.invoke_task('scraper:scrape_ads_flagged_unscraped')
       Rake.application.invoke_task('scraper:compress_html_copies')
-      Rake.application.invoke_task('scraper:find_duplicates_last_month')
-      Rake.application.invoke_task('scraper:export_last_month_ads_to_iset_csv')
+      Rake.application.invoke_task("scraper:find_duplicates_previous_month[#{args[:optional_number_months_ago]}]")
+      Rake.application.invoke_task("scraper:export_previous_month_ads_to_iset_csv[#{args[:optional_number_months_ago]}]")
       Rake.application.invoke_task('data:update_github')
     end
 
@@ -29,7 +29,7 @@ namespace :scraper do
 
       Proxy.update_proxy_list
 
-      limit = clean_limit(args[:optional_limit])
+      limit = clean_number_argument(args[:optional_limit])
       if limit.nil?
         Rake.application.invoke_task('scraper:scrape_ad_ids_posted_today')
       else
@@ -53,7 +53,7 @@ namespace :scraper do
   desc 'Scrape ad ids posted on place.ge today and flag for scraping'
   task :scrape_ad_ids_posted_today, [:optional_limit] do |_t, args|
     ScraperLog.logger.info 'INVOKED TASK: scrape_ad_ids_posted_today'
-    limit = clean_limit(args[:optional_limit])
+    limit = clean_number_argument(args[:optional_limit])
 
     PlaceGeAdGroup.new(Date.today, Date.today, limit)
       .run(&:scrape_and_save_ad_ids)
@@ -62,7 +62,7 @@ namespace :scraper do
   desc 'Scrape ad ids posted on place.ge yesterday and flag for scraping'
   task :scrape_ad_ids_posted_yesterday, [:optional_limit] do |_t, args|
     ScraperLog.logger.info 'INVOKED TASK: scrape_ad_ids_posted_yesterday'
-    limit = clean_limit(args[:optional_limit])
+    limit = clean_number_argument(args[:optional_limit])
 
     PlaceGeAdGroup.new(Date.today - 1, Date.today - 1, limit)
       .run(&:scrape_and_save_ad_ids)
@@ -74,17 +74,20 @@ namespace :scraper do
 
     start_date = process_start_date(args[:start_date])
     end_date = process_end_date(args[:end_date])
-    limit = clean_limit(args[:optional_limit])
+    limit = clean_number_argument(args[:optional_limit])
 
     PlaceGeAdGroup.new(start_date, end_date, limit)
       .run(&:scrape_and_save_ad_ids)
   end
 
-  desc 'Scrape ad ids posted in previous month'
-  task :scrape_ad_ids_posted_last_month do
-    ScraperLog.logger.info "INVOKED TASK: scrape_ad_ids_posted_last_month"
+  desc 'Scrape ad ids posted in a previous month'
+  task :scrape_ad_ids_posted_previous_month, [:optional_number_months_ago] do |_t, args|
+    ScraperLog.logger.info "INVOKED TASK: scrape_ad_ids_posted_previous_month"
 
-    PlaceGeAdGroup.new(*previous_month_start_and_end_dates(Date.today), nil)
+    months_ago = clean_number_argument(args[:optional_number_months_ago])
+    months_ago = 1 if months_ago.nil?
+
+    PlaceGeAdGroup.new(*previous_month_start_and_end_dates(Date.today, months_ago), nil)
       .scrape_and_save_ad_ids(true)
   end
 
@@ -127,11 +130,14 @@ namespace :scraper do
   ########################################################################
   # CSV Export #
 
-  desc "Export last month's ad data to CSV for analysis by ISET"
-  task :export_last_month_ads_to_iset_csv do
-    ScraperLog.logger.info 'INVOKED TASK: export_last_month_ads_to_iset_csv'
+  desc "Export a previous month's ad data to CSV for analysis by ISET"
+  task :export_previous_month_ads_to_iset_csv, [:optional_number_months_ago] do |_t, args|
+    ScraperLog.logger.info 'INVOKED TASK: export_pervious_month_ads_to_iset_csv'
 
-    Ad.to_iset_csv(*previous_month_start_and_end_dates(Date.today), false)
+    months_ago = clean_number_argument(args[:optional_number_months_ago])
+    months_ago = 1 if months_ago.nil?
+
+    Ad.to_iset_csv(*previous_month_start_and_end_dates(Date.today, month_ago), false)
   end
 
   desc 'Output subset of ad data to CSV for analysis by ISET; parameters should be in format [yyyy-mm-dd,yyyy-mm-dd,with_duplicate(boolean)]'
@@ -172,15 +178,18 @@ namespace :scraper do
   ########################################################################
   # Find duplicate ad entries and mark one of them as the primary property
 
-  desc 'Find duplicates for last month'
-  task :find_duplicates_last_month do
-    ScraperLog.logger.info 'INVOKED TASK: find_duplicates_last_month'
+  desc 'Find duplicates for previous month'
+  task :find_duplicates_previous_month, [:optional_number_months_ago] do |_t, args|
+    ScraperLog.logger.info 'INVOKED TASK: find_duplicates_previous_month'
 
-    last_month = (Date.today).last_month
+    months_ago = clean_number_argument(args[:optional_number_months_ago])
+    months_ago = 1 if months_ago.nil?
+
+    previous_month = (Date.today).prev_month(months_ago)
 
     AdEntry.identify_duplicates_for_month_year(
-      last_month.month,
-      last_month.year
+      previous_month.month,
+      previous_month.year
     )
   end
 
