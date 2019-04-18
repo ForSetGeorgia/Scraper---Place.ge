@@ -85,7 +85,7 @@ namespace :scraper do
     ScraperLog.logger.info "INVOKED TASK: scrape_ad_ids_posted_last_month"
 
     PlaceGeAdGroup.new(*previous_month_start_and_end_dates(Date.today), nil)
-      .run(&:scrape_and_save_ad_ids)
+      .scrape_and_save_ad_ids(true)
   end
 
   ########################################################################

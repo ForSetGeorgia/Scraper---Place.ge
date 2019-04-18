@@ -7,6 +7,7 @@ class PlaceGeAdGroup
     set_dates(start_date, end_date)
     @ad_limit = ad_limit
     @errors = []
+    @retry_attempts = 4
   end
 
   def set_dates(start_date, end_date)
@@ -57,15 +58,17 @@ class PlaceGeAdGroup
   # 2. Checks all paid ads
   # 3. Checks simple ads. When a simple ad is found that does not match
   #    the date criteria, the scraper stops scraping IDs.
-  def scrape_and_save_ad_ids
+  def scrape_and_save_ad_ids(fast_search = false)
     ScraperLog.logger.info "Finding ids of ads posted #{dates_to_s}"
     ScraperLog.logger.info "Number of ad limited to #{@ad_limit}" unless @ad_limit.nil?
+    ScraperLog.logger.info "Fast_search = #{fast_search}"
 
     @finished_scraping_ids = false
     @found_simple_ad_box = false
     @ad_ids = []
     # 2019-01 - place.ge changed the url so that page:1 no longer exists
     # so we have to start with page 2
+    link = "https://place.ge/ge/ads/page:[page_num]?limit=[limit]&object_type=all&currency_id=2&mode=list&order_by=date"
     page_num = 2 #1
     max_page_limit = 750
     min_page_limit = 100
@@ -78,14 +81,138 @@ class PlaceGeAdGroup
       limit = @ad_limit
     end
 
+    if fast_search
+      ScraperLog.logger.info "RUNNING FAST SEARCH"
+
+      total_pages = get_total_pages(link, page_num, limit)
+      ScraperLog.logger.info "TOTAL PAGES = #{total_pages}"
+      starting_page = determine_starting_page(link, limit, (total_pages / 2), total_pages, page_num)
+
+      page_num = starting_page if starting_page
+    end
+    ScraperLog.logger.info "@@@@@@@@@@@@@@@@@@"
+    ScraperLog.logger.info "starting page = #{page_num}"
+
+    # go sequentially through pages
     while not_finished_scraping_ids?
       # puts "- ad ids page #{page_num}; ad ids = #{@ad_ids.size}"
-      link = "https://place.ge/ge/ads/page:#{page_num}?limit=#{limit}&object_type=all&currency_id=2&mode=list&order_by=date"
-      scrape_and_save_ad_ids_from_page(link)
+      scrape_and_save_ad_ids_from_page(create_link(link, page_num, limit))
       page_num += 1
     end
 
     ScraperLog.logger.info "Finished scraping ad ids; found #{@ad_ids.size} total ads"
+  end
+
+  # create the link with the page num and limit inserted into it
+  def create_link(link, page_num, limit)
+    link.gsub('[page_num]', page_num.to_s).gsub('[limit]', limit.to_s)
+  end
+
+  # look at the pagination to determine how many pages total there are
+  def get_total_pages(link, page_num, limit)
+    total = 0
+    formatted_link = create_link(link, page_num, limit)
+
+    begin
+      retries ||= 0
+
+      page = Nokogiri.HTML(open(formatted_link, {
+        proxy: 'http://' + Proxy.get_proxy,
+        "User-Agent" => get_user_agent,
+        ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE
+      }))
+
+      spans = page.css('.pageBg .boxPages span')
+      total = spans[-3].css('a').text.to_i
+    rescue StandardError => error
+      error_msg = "Error while scraping ad ids from #{formatted_link}: #{error.inspect}"
+      ScraperLog.logger.error error_msg
+
+      # 502 error is often thrown so let's retry just in case the page will load this time
+      retry if (retries += 1) < @retry_attempts
+
+      return false
+    end
+
+    return total
+  end
+
+  # jump around to find the page that has content we want
+  # (
+  #   non fast search starts at page_num and goes sequentially until the dates have been found and processed
+  #   this can take a long time for we are running last month scraper, the pages with this text is well after page 100
+  # )
+  # - get first page and look at pagination to see how many pages total
+  # - go to middle page and check dates
+  # - based on dates either jump ahead 50% or skip back 50%
+  # - continue until find the starting page
+  def determine_starting_page(link, limit, current_page, total_pages, last_page)
+    start_page = nil
+    ScraperLog.logger.info "====================== searching a new page ======================"
+    ScraperLog.logger.info "current = #{current_page}"
+    ScraperLog.logger.info "last = #{last_page}"
+    ScraperLog.logger.info "total_pages = #{total_pages}"
+    ScraperLog.logger.info "limit = #{limit}"
+    ScraperLog.logger.info "start date = #{@start_date}"
+    ScraperLog.logger.info "end date = #{@end_date}"
+    ScraperLog.logger.info "-------- getting page data ---------"
+
+    formatted_link = create_link(link, current_page, limit)
+
+    begin
+      retries ||= 0
+
+      # get the page
+      page = Nokogiri.HTML(open(formatted_link, {
+        proxy: 'http://' + Proxy.get_proxy,
+        "User-Agent" => get_user_agent,
+        ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE
+      }))
+
+      # get all simple ads
+      simple_ads = page.css('.tr-line.simple-ad')
+      if !simple_ads.nil? && simple_ads.length > 0
+        # look at the first and last ad to determine if we found the starting page
+        ad_box_first = PlaceGeAdBox.new(simple_ads.first)
+        ad_box_last = PlaceGeAdBox.new(simple_ads.last)
+        ScraperLog.logger.info "first date = #{ad_box_first.pub_date}"
+        ScraperLog.logger.info "last date = #{ad_box_last.pub_date}"
+
+        # - if first ad date > @end_date && last ad date in between start and end, then found starting page
+        # - else if first ad date and last ad date > @end_date, not far enough, need to increase page number
+        # - else if first ad date and last ad date < @start_date, too far, need to decrease page number
+        # - else if first and last ad date between start and end, we found the dates, need to decrease page number to find start
+        if ad_box_first.pub_date > @end_date && ad_box_last.between_dates?(@start_date, @end_date)
+          ScraperLog.logger.info "-> found starting page!"
+          # found the starting page!
+          start_page = current_page
+        elsif (current_page - last_page).abs == 1
+          ScraperLog.logger.info "-> only one page difference between current and last page, so just using the smaller for the start page"
+          # there is only one page difference, so just take the smaller page as the start page
+          start_page = last_page > current_page ? current_page - 1 : last_page
+        elsif ad_box_first.pub_date > @end_date && ad_box_last.pub_date > @end_date
+          ScraperLog.logger.info "-> have not gone far enough yet"
+          # not far enough, jump ahead
+          start_page = determine_starting_page(link, limit, (current_page + (current_page - last_page).abs / 2), total_pages, current_page)
+        elsif (ad_box_first.pub_date < @start_date && ad_box_last.pub_date < @start_date) ||
+          (ad_box_first.between_dates?(@start_date, @end_date) && ad_box_last.between_dates?(@start_date, @end_date))
+          ScraperLog.logger.info "-> have gone too far"
+          # too far, jump back
+          start_page = determine_starting_page(link, limit, (current_page - (current_page - last_page).abs / 2), total_pages, current_page)
+        end
+
+      end
+    rescue StandardError => error
+      error_msg = "Error while scraping ad ids from #{formatted_link}: #{error.inspect}"
+      ScraperLog.logger.error error_msg
+
+      # 502 error is often thrown so let's retry just in case the page will load this time
+      retry if (retries += 1) < @retry_attempts
+
+      return false
+    end
+
+    return start_page
   end
 
   def scrape_and_save_ad_ids_from_page(link)
@@ -104,7 +231,7 @@ class PlaceGeAdGroup
       @errors.push error_msg
 
       # 502 error is often thrown so let's retry just in case the page will load this time
-      retry if (retries += 1) < 3
+      retry if (retries += 1) < @retry_attempts
 
       return false
     end
