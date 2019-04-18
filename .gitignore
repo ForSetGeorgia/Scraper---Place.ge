@@ -9,3 +9,5 @@ system/*
 log/*
 *.csv
 data/*
+
+proxies.csv

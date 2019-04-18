@@ -12,6 +12,7 @@ require 'mysql2'
 require 'yaml'
 require 'erb'
 require 'mail'
+require 'csv'
 
 # recursively requires all files in ./lib and down that end in .rb
 Dir.glob('./lib/**/*.rb').each do |file|

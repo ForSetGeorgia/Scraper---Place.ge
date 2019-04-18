@@ -1,4 +1,5 @@
 require_relative '../../environment'
+require_relative 'helper'
 
 # Real estate ad on place.ge
 class PlaceGeAd
@@ -11,18 +12,31 @@ class PlaceGeAd
   # Saves copies of scraped ad html in <project_dir>/place_ge_ads_html/
   def retrieve_page_and_save_html_copy
     FileUtils.mkdir_p 'system/place_ge_ads_html'
-    open(ad_source_file_path, 'wb') do |file|
-      open(@link,{
-        "User-Agent" => "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36",
-        ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE
-      }) do |uri|
+    begin
+      retries ||= 0
 
-        ad_source = uri.read
-        file.write(ad_source)
+      open(ad_source_file_path, 'wb') do |file|
+        open(@link,{
+          proxy: 'http://' + Proxy.get_proxy,
+          "User-Agent" => get_user_agent,
+          ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE
+        }) do |uri|
 
-        @html_copy_path = File.expand_path(ad_source_compressed_file_path)
-        @page = Nokogiri::HTML(ad_source)
+          ad_source = uri.read
+          file.write(ad_source)
+
+          @html_copy_path = File.expand_path(ad_source_compressed_file_path)
+          @page = Nokogiri::HTML(ad_source)
+        end
       end
+    rescue StandardError => error
+      error_msg = "Error while scraping ad from #{link}: #{error.inspect}"
+      ScraperLog.logger.error error_msg
+
+      # 502 error is often thrown so let's retry just in case the page will load this time
+      retry if (retries += 1) < 3
+
+      return false
     end
   end
 

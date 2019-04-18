@@ -13,6 +13,8 @@ namespace :scraper do
     task :last_month do
       ScraperLog.logger.info 'INVOKED TASK: main_scrape_tasks:last_month'
 
+      Proxy.update_proxy_list
+
       Rake.application.invoke_task('scraper:scrape_ad_ids_posted_last_month')
       Rake.application.invoke_task('scraper:scrape_ads_flagged_unscraped')
       Rake.application.invoke_task('scraper:compress_html_copies')
@@ -24,8 +26,10 @@ namespace :scraper do
     desc "Perform scrape tasks on today's ads"
     task :today, [:optional_limit] do |_t, args|
       ScraperLog.logger.info 'INVOKED TASK: main_scrape_tasks:today'
-      limit = clean_limit(args[:optional_limit])
 
+      Proxy.update_proxy_list
+
+      limit = clean_limit(args[:optional_limit])
       if limit.nil?
         Rake.application.invoke_task('scraper:scrape_ad_ids_posted_today')
       else

@@ -1,4 +1,5 @@
 require_relative '../../environment'
+require_relative 'helper'
 
 # Group of place.ge real estate ads
 class PlaceGeAdGroup
@@ -93,7 +94,8 @@ class PlaceGeAdGroup
       retries ||= 0
 
       page = Nokogiri.HTML(open(link, {
-        "User-Agent" => "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36",
+        proxy: 'http://' + Proxy.get_proxy,
+        "User-Agent" => get_user_agent,
         ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE
       }))
     rescue StandardError => error
