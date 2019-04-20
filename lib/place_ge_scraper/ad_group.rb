@@ -317,6 +317,61 @@ class PlaceGeAdGroup
     remind_to_compress_html_copies
   end
 
+  def scrape_and_save_unscraped_ad_entries_with_hydra
+    @start = Time.now
+    @ad_ids = Ad.with_unscraped_entry.map(&:place_ge_id)
+
+    # scrape the ads
+    run_hydra
+
+    # if there were scraping errors, re-process the ads that had errors
+    if @ad_ids_scrape_errors.length > 0
+      ScraperLog.logger.info "There were scraping errors, trying to re-process the ads"
+      @start = Time.now
+      @ad_ids = @ad_ids_scrape_errors
+      run_hydra
+    end
+
+    # do it one more time just in case there were still errors
+    if @ad_ids_scrape_errors.length > 0
+      ScraperLog.logger.info "There were still scraping errors, trying one last time to re-process the ads"
+      @start = Time.now
+      @ad_ids = @ad_ids_scrape_errors
+      run_hydra
+    end
+
+    remind_to_compress_html_copies
+  end
+
+  def run_hydra
+    ScraperLog.logger.info "Scraping #{@ad_ids.size} ads flagged as unscraped with hydra"
+
+    @ad_ids_scrape_errors = []
+
+    #initiate hydra
+    hydra = Typhoeus::Hydra.new(max_concurrency: 5)
+    Typhoeus::Config.user_agent = get_user_agent
+
+    @total_to_process = @ad_ids.length
+    @total_left_to_process = @ad_ids.length
+
+    @ad_ids.each_with_index do |ad_id, index|
+      hydra.queue(build_hydra_request(ad_id))
+    end
+
+    hydra.run
+
+    ScraperLog.logger.info "------------------------------"
+    ScraperLog.logger.info "It took #{((Time.now - @start) / 60).round(2)} minutes to process #{@ad_ids.size} items"
+    ScraperLog.logger.info "------------------------------"
+
+    # see if there are any ad ids that had errors while scraping
+    ScraperLog.logger.info "------------------------------"
+    ScraperLog.logger.info "There are #{@ad_ids_scrape_errors.length} ads that need to be rescraped due to errors"
+    ScraperLog.logger.info "------------------------------"
+
+  end
+
   def remind_to_compress_html_copies
     msgs = []
     msgs.push('Reminder - compress copies of ad HTML to save space:')
@@ -327,6 +382,48 @@ class PlaceGeAdGroup
       ScraperLog.logger.info msg
       puts msg
     end
+  end
+
+  def build_hydra_request(ad_id)
+    request = Typhoeus::Request.new("#{PlaceGeAd.link_for_id(ad_id)}",
+                followlocation: true,
+                ssl_verifypeer: false,
+                ssl_verifyhost: 0,
+                proxy: Proxy.get_proxy)
+
+    request.on_complete do |response|
+      if response.success?
+        ScraperLog.logger.info "Scraped info for ad with id #{ad_id}"
+        ad = PlaceGeAd.new(ad_id, response.body)
+        ad.save_html_copy
+        ad.scrape_all
+        save_ad(ad)
+      elsif response.timed_out?
+        # aw hell no
+        ScraperLog.logger.error "Error while scraping ad from #{response.request.url}: response timeout"
+        @ad_ids_scrape_errors << ad_id
+      elsif response.code == 0
+        # Could not get an http response, something's wrong.
+        ScraperLog.logger.error "Error while scraping ad from #{response.request.url}: html response code = 0"
+        @ad_ids_scrape_errors << ad_id
+      elsif response.code == 404
+        # page could not be found
+        ScraperLog.logger.error "Error while scraping ad from #{response.request.url}: html response code = 404"
+      else
+        # Received a non-successful http response.
+        ScraperLog.logger.error "Error while scraping ad from #{response.request.url}: html response code = #{response.code}"
+        @ad_ids_scrape_errors << ad_id
+      end
+
+      # decrease counter of items to process
+      @total_left_to_process -= 1
+      if @total_left_to_process % 25 == 0
+        ScraperLog.logger.info "*** There are #{@total_left_to_process} ads left to process; time so far = #{(Time.now - @start).round(2)} seconds"
+      end
+
+    end
+
+    return request
   end
 
   def scrape_and_save_ad(ad_id)

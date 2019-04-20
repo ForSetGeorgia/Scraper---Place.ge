@@ -9,6 +9,7 @@ gem 'activerecord', '~> 4.2.10'
 gem 'standalone_migrations', '~> 5.2.6'
 gem 'mail', '~> 2.6.3'
 gem 'whenever', '~> 0.9.4', require: false
+gem 'typhoeus', '~> 1.3', '>= 1.3.1'
 
 group :development, :test do
   gem 'pry-byebug', '~> 3.1.0'

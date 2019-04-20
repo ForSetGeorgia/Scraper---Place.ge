@@ -3,10 +3,14 @@ require_relative 'helper'
 
 # Real estate ad on place.ge
 class PlaceGeAd
-  def initialize(place_ge_ad_id)
+  def initialize(place_ge_ad_id, response_body=nil)
     @place_ge_id = place_ge_ad_id
     @link = PlaceGeAd.link_for_id(place_ge_id)
     @time_of_scrape = Time.now.change(usec: 0).utc
+    if !response_body.nil?
+      @response_body = response_body
+      @page = Nokogiri::HTML(response_body)
+    end
   end
 
   # Saves copies of scraped ad html in <project_dir>/place_ge_ads_html/
@@ -37,6 +41,18 @@ class PlaceGeAd
       retry if (retries += 1) < 3
 
       return false
+    end
+  end
+
+  def save_html_copy
+    if @response_body
+      FileUtils.mkdir_p 'system/place_ge_ads_html'
+
+      open(ad_source_file_path, 'wb') do |file|
+        file.write(@response_body)
+      end
+
+      @html_copy_path = File.expand_path(ad_source_compressed_file_path)
     end
   end
 
