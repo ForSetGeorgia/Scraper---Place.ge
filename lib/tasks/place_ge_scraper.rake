@@ -16,7 +16,7 @@ namespace :scraper do
       Proxy.update_proxy_list
 
       Rake.application.invoke_task("scraper:scrape_ad_ids_posted_previous_month[#{args[:optional_number_months_ago]}]")
-      Rake.application.invoke_task('scraper:scrape_ads_flagged_unscraped')
+      Rake.application.invoke_task("scraper:scrape_ads_flagged_unscraped[true]")
       Rake.application.invoke_task('scraper:compress_html_copies')
       Rake.application.invoke_task("scraper:find_duplicates_previous_month[#{args[:optional_number_months_ago]}]")
       Rake.application.invoke_task("scraper:export_previous_month_ads_to_iset_csv[#{args[:optional_number_months_ago]}]")
@@ -95,9 +95,13 @@ namespace :scraper do
   # Scrape ads that are marked has_unscraped_ad_entry #
 
   desc 'Scrape ad entries for ads in database that are flagged for scraping'
-  task :scrape_ads_flagged_unscraped do
+  task :scrape_ads_flagged_unscraped, [:with_hydra] do |_t, args|
     ScraperLog.logger.info 'INVOKED TASK: scrape_ads_flagged_unscraped'
-    PlaceGeAdGroup.new.run(&:scrape_and_save_unscraped_ad_entries)
+    if args[:with_hydra].nil?
+      PlaceGeAdGroup.new.run(&:scrape_and_save_unscraped_ad_entries)
+    else
+      PlaceGeAdGroup.new.run(&:scrape_and_save_unscraped_ad_entries_with_hydra)
+    end
   end
 
   ########################################################################
