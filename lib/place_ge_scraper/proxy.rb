@@ -8,6 +8,7 @@ module Proxy
   FILE_PATH = 'proxies.csv'
 
   def self.update_proxy_list
+    ScraperLog.logger.info "Updating proxy list"
     proxies = []
     COUNTRIES.each do |country|
       request = open(API_URL + country, {"User-Agent" => get_user_agent, ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE})
@@ -21,6 +22,7 @@ module Proxy
         csv << [proxy]
       end
     end
+    ScraperLog.logger.info "Proxy list updated"
   end
 
   def self.get_proxy

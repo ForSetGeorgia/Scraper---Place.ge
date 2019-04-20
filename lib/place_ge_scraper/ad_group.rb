@@ -7,7 +7,7 @@ class PlaceGeAdGroup
     set_dates(start_date, end_date)
     @ad_limit = ad_limit
     @errors = []
-    @retry_attempts = 4
+    @retry_attempts = 5
   end
 
   def set_dates(start_date, end_date)
@@ -70,7 +70,7 @@ class PlaceGeAdGroup
     # so we have to start with page 2
     link = "https://place.ge/ge/ads/page:[page_num]?limit=[limit]&object_type=all&currency_id=2&mode=list&order_by=date"
     page_num = 2 #1
-    max_page_limit = 750
+    max_page_limit = 500
     min_page_limit = 100
 
     if @ad_limit.nil? || @ad_limit > max_page_limit
@@ -207,9 +207,16 @@ class PlaceGeAdGroup
       ScraperLog.logger.error error_msg
 
       # 502 error is often thrown so let's retry just in case the page will load this time
-      retry if (retries += 1) < @retry_attempts
+      if (retries += 1) < @retry_attempts
+        retry
+        return false
+      else
+        # for some reason this page is not working so lets try another page
+        # so the system does not stall
+        ScraperLog.logger.info "The url #{formatted_link} would not work after several attempts, so trying a page"
+        start_page = determine_starting_page(link, limit, (current_page > 2 ? current_page - 1 : current_page + 1), total_pages, last_page)
+      end
 
-      return false
     end
 
     return start_page
