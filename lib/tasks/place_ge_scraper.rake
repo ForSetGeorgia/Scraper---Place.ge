@@ -141,7 +141,7 @@ namespace :scraper do
     months_ago = clean_number_argument(args[:optional_number_months_ago])
     months_ago = 1 if months_ago.nil?
 
-    Ad.to_iset_csv(*previous_month_start_and_end_dates(Date.today, month_ago), false)
+    Ad.to_iset_csv(*previous_month_start_and_end_dates(Date.today, months_ago), false)
   end
 
   desc 'Output subset of ad data to CSV for analysis by ISET; parameters should be in format [yyyy-mm-dd,yyyy-mm-dd,with_duplicate(boolean)]'

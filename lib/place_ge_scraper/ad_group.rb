@@ -61,7 +61,6 @@ class PlaceGeAdGroup
   def scrape_and_save_ad_ids(fast_search = false)
     ScraperLog.logger.info "Finding ids of ads posted #{dates_to_s}"
     ScraperLog.logger.info "Number of ad limited to #{@ad_limit}" unless @ad_limit.nil?
-    ScraperLog.logger.info "Fast_search = #{fast_search}"
 
     @finished_scraping_ids = false
     @found_simple_ad_box = false
@@ -81,11 +80,12 @@ class PlaceGeAdGroup
       limit = @ad_limit
     end
 
+    total_pages = get_total_pages(link, page_num, limit)
+    ScraperLog.logger.info "TOTAL PAGES = #{total_pages}"
+
     if fast_search
       ScraperLog.logger.info "RUNNING FAST SEARCH"
 
-      total_pages = get_total_pages(link, page_num, limit)
-      ScraperLog.logger.info "TOTAL PAGES = #{total_pages}"
       starting_page = determine_starting_page(link, limit, (total_pages / 2), total_pages, page_num)
 
       page_num = starting_page if starting_page
@@ -94,7 +94,7 @@ class PlaceGeAdGroup
     ScraperLog.logger.info "starting page = #{page_num}"
 
     # go sequentially through pages
-    while not_finished_scraping_ids?
+    while not_finished_scraping_ids? && page_num <= total_pages
       # puts "- ad ids page #{page_num}; ad ids = #{@ad_ids.size}"
       scrape_and_save_ad_ids_from_page(create_link(link, page_num, limit))
       page_num += 1
@@ -356,7 +356,7 @@ class PlaceGeAdGroup
     @ad_ids_scrape_errors = []
 
     #initiate hydra
-    hydra = Typhoeus::Hydra.new(max_concurrency: 5)
+    hydra = Typhoeus::Hydra.new(max_concurrency: 10)
     Typhoeus::Config.user_agent = get_user_agent
 
     @total_to_process = @ad_ids.length
@@ -424,8 +424,9 @@ class PlaceGeAdGroup
 
       # decrease counter of items to process
       @total_left_to_process -= 1
-      if @total_left_to_process % 25 == 0
-        ScraperLog.logger.info "*** There are #{@total_left_to_process} ads left to process; time so far = #{(Time.now - @start).round(2)} seconds"
+
+      if @total_left_to_process % 50 == 0
+        ScraperLog.logger.info "***** #{@total_to_process - @total_left_to_process} ads processed; #{@ad_ids_scrape_errors.length} errors thrown; #{@total_left_to_process} ads left to process; time so far = #{((Time.now - @start)/60).round(2)} minutes"
       end
 
     end
