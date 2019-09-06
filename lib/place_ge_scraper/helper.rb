@@ -42,6 +42,14 @@ def update_data_github
   `cd data && git add -A`
   `cd data && git commit -m 'Added new the csv file for the last month'`
   `cd data && git push origin master`
+
+  body = [
+    "The Place.ge Scraper has finished scraping the previous month!",
+    "You can download the new data file at: #{ENV['GITHUB_DATA_URL']}"
+  ]
+
+  send_email(to: ENV['FEEDBACK_SUCCESS_EMAIL'], subject: 'New Data is Ready', body: body.join("\n"))
+
 end
 
 
@@ -74,3 +82,19 @@ def get_user_agent
   USER_AGENTS.sample
 end
 
+def send_email(args={})
+  settings = defaults={
+    to: ENV['FEEDBACK_TO_EMAIL'],
+    subject: '',
+    body: nil
+  }.merge(args)
+
+  email = Mail.new do
+    from ENV['FEEDBACK_FROM_EMAIL']
+    to settings[:to]
+    subject "#{ENV['EMAIL_SUBJECT_PREFIX']} - #{settings[:subject]}"
+    body settings[:body]
+  end
+
+  email.deliver!
+end

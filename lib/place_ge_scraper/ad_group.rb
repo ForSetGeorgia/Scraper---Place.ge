@@ -38,12 +38,19 @@ class PlaceGeAdGroup
     end
   end
 
+  # return string formatted as "hh:mm:ss"
+  def run_time(start_time, end_time)
+    start_time_i = start_time.to_i
+    end_time_i = end_time.to_i
+    return Time.at(end_time_i - start_time_i).utc.strftime("%H:%M:%S")
+  end
+
   def run
     start_time = Time.now.to_i
     yield self
     end_time = Time.now.to_i
-    time_elapsed = Time.at(end_time - start_time).utc.strftime("%H:%M:%S")
-    ScraperLog.logger.info "Scraper ran for #{time_elapsed}"
+    time_elapsed = run_time(start_time, end_time)
+    ScraperLog.logger.info "Scraper ran for #{time_elapsed} (hh:mm:ss)"
     log_errors
     email_errors
   end
@@ -59,8 +66,11 @@ class PlaceGeAdGroup
   # 3. Checks simple ads. When a simple ad is found that does not match
   #    the date criteria, the scraper stops scraping IDs.
   def scrape_and_save_ad_ids(fast_search = false)
+    start = Time.now
     ScraperLog.logger.info "Finding ids of ads posted #{dates_to_s}"
     ScraperLog.logger.info "Number of ad limited to #{@ad_limit}" unless @ad_limit.nil?
+
+    email_scraping_start
 
     @finished_scraping_ids = false
     @found_simple_ad_box = false
@@ -93,6 +103,8 @@ class PlaceGeAdGroup
     ScraperLog.logger.info "@@@@@@@@@@@@@@@@@@"
     ScraperLog.logger.info "starting page = #{page_num}"
 
+    email_starting_page(page_num, total_pages, run_time(start, Time.now))
+
     # go sequentially through pages
     while not_finished_scraping_ids? && page_num <= total_pages
       # puts "- ad ids page #{page_num}; ad ids = #{@ad_ids.size}"
@@ -101,6 +113,8 @@ class PlaceGeAdGroup
     end
 
     ScraperLog.logger.info "Finished scraping ad ids; found #{@ad_ids.size} total ads"
+
+    email_finished_ids(Ad.with_unscraped_entry.count, run_time(start, Time.now))
   end
 
   # create the link with the page num and limit inserted into it
@@ -325,6 +339,7 @@ class PlaceGeAdGroup
   end
 
   def scrape_and_save_unscraped_ad_entries_with_hydra
+    start = Time.now
     @start = Time.now
     @ad_ids = Ad.with_unscraped_entry.map(&:place_ge_id)
 
@@ -334,6 +349,7 @@ class PlaceGeAdGroup
     # if there were scraping errors, re-process the ads that had errors
     if @ad_ids_scrape_errors.length > 0
       ScraperLog.logger.info "There were scraping errors, trying to re-process the ads"
+      email_rescraping_errors('1st', @ad_ids_scrape_errors.length, run_time(start, Time.now))
       @start = Time.now
       @ad_ids = @ad_ids_scrape_errors
       run_hydra
@@ -342,6 +358,7 @@ class PlaceGeAdGroup
     # do it one more time just in case there were still errors
     if @ad_ids_scrape_errors.length > 0
       ScraperLog.logger.info "There were still scraping errors, trying one last time to re-process the ads"
+      email_rescraping_errors('2nd', @ad_ids_scrape_errors.length, run_time(start, Time.now))
       @start = Time.now
       @ad_ids = @ad_ids_scrape_errors
       run_hydra
@@ -428,6 +445,9 @@ class PlaceGeAdGroup
       if @total_left_to_process % 50 == 0
         ScraperLog.logger.info "***** #{@total_to_process - @total_left_to_process} ads processed; #{@ad_ids_scrape_errors.length} errors thrown; #{@total_left_to_process} ads left to process; time so far = #{((Time.now - @start)/60).round(2)} minutes"
       end
+      if !ENV['EMAIL_PROCESSED_SO_FAR_TRIGGER'].nil? && @total_left_to_process % ENV['EMAIL_PROCESSED_SO_FAR_TRIGGER'].to_s.to_i == 0
+        email_ads_processed_so_far(@total_to_process, @total_left_to_process, @ad_ids_scrape_errors.length, run_time(@start, Time.now))
+      end
 
     end
 
@@ -474,26 +494,80 @@ class PlaceGeAdGroup
     end
   end
 
-  def email_errors
-    return if @errors.empty? # Don't send email if no errors
-    create_error_report if @error_report.nil?
-
-    error_body = @error_report.join("\n").gsub('<', '').gsub('>', '')
-
-    error_mail = Mail.new do
-      from ENV['FEEDBACK_FROM_EMAIL']
-      to ENV['FEEDBACK_TO_EMAIL']
-      subject 'Place.Ge Scraper Errors'
-      body error_body
-    end
-
-    error_mail.deliver!
-  end
-
   def log_errors
     return if @errors.empty? # Don't log anything if no errors
     create_error_report if @error_report.nil?
 
     @error_report.each { |line| ScraperLog.logger.info line }
   end
+
+
+  ########################################################################
+  # EMAIL MESSAGES
+
+  def email_scraping_start
+    body = [
+      "The Place.ge Scraper with dates #{dates_to_s} has started."
+    ]
+
+    send_email(subject: 'Started!', body: body.join("\n"))
+  end
+
+  def email_starting_page(page_num, total_pages, run_time)
+    body = [
+      "The Place.ge Scraper with dates #{dates_to_s} has found the starting page to get IDs:",
+      "- Starting page: #{page_num}",
+      "- Total pages: #{total_pages}",
+      "",
+      "Run time so far: #{run_time} (hh:mm:ss)"
+    ]
+
+    send_email(subject: 'Starting Page for Getting IDs Found!', body: body.join("\n"))
+  end
+
+  def email_finished_ids(ad_count, run_time)
+    body = [
+      "The Place.ge Scraper with dates #{dates_to_s} has finished getting IDs.",
+      "Found a total of #{ad_count} IDs that now need to be scraped.",
+      "",
+      "Run time so far: #{run_time} (hh:mm:ss)"
+    ]
+
+    send_email(subject: 'IDs Finished!', body: body.join("\n"))
+  end
+
+  def email_ads_processed_so_far(total_to_process, total_left_to_process, ad_ids_scrape_errors, run_time)
+    body = [
+      "The Place.ge Scraper with dates #{dates_to_s} is still scraping the ads:",
+      "- processed so far: #{total_to_process - total_left_to_process}",
+      "- left to process: #{total_left_to_process}",
+      "- scrape errors so far: #{ad_ids_scrape_errors}",
+      "",
+      "Run time so far: #{run_time} (hh:mm:ss)"
+    ]
+
+    send_email(subject: "Ads Scraping Update", body: body.join("\n"))
+  end
+
+  def email_rescraping_errors(error_attempt, error_count, run_time)
+    body = [
+      "The Place.ge Scraper with dates #{dates_to_s} is now re-scraping the ads that had errors.",
+      "There are #{error_count} ads that need to be re-scraped.",
+      "This is the #{error_attempt} time re-scraping the errors.",
+      "",
+      "Run time so far: #{run_time} (hh:mm:ss)"
+    ]
+
+    send_email(subject: "Re-scraping Errors for the #{error_attempt} Time", body: body.join("\n"))
+  end
+
+  def email_errors
+    return if @errors.empty? # Don't send email if no errors
+    create_error_report if @error_report.nil?
+
+    body = @error_report.join("\n").gsub('<', '').gsub('>', '')
+
+    send_email(subject: 'Errors', body: body)
+  end
+
 end
