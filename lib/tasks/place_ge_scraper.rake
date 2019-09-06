@@ -13,8 +13,7 @@ namespace :scraper do
     task :previous_month, [:optional_number_months_ago] do |_t, args|
       ScraperLog.logger.info 'INVOKED TASK: main_scrape_tasks:previous_month'
 
-      Proxy.update_proxy_list
-
+      Rake.application.invoke_task("scraper:update_proxy_list")
       Rake.application.invoke_task("scraper:scrape_ad_ids_posted_previous_month[#{args[:optional_number_months_ago]}]")
       Rake.application.invoke_task("scraper:scrape_ads_flagged_unscraped[true]")
       Rake.application.invoke_task('scraper:compress_html_copies')
@@ -27,7 +26,7 @@ namespace :scraper do
     task :today, [:optional_limit] do |_t, args|
       ScraperLog.logger.info 'INVOKED TASK: main_scrape_tasks:today'
 
-      Proxy.update_proxy_list
+      Rake.application.invoke_task("scraper:update_proxy_list")
 
       limit = clean_number_argument(args[:optional_limit])
       if limit.nil?
@@ -49,6 +48,12 @@ namespace :scraper do
 
   ########################################################################
   # Scrape ad ids, save as ads and mark them with has_unscraped_ad_entry #
+
+  desc 'Update the list of proxies'
+  task :update_proxy_list do
+    ScraperLog.logger.info 'INVOKED TASK: update_proxy_list'
+    Proxy.update_proxy_list
+  end
 
   desc 'Scrape ad ids posted on place.ge today and flag for scraping'
   task :scrape_ad_ids_posted_today, [:optional_limit] do |_t, args|
