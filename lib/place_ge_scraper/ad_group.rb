@@ -77,9 +77,9 @@ class PlaceGeAdGroup
     @ad_ids = []
     # 2019-01 - place.ge changed the url so that page:1 no longer exists
     # so we have to start with page 2
-    link = "https://place.ge/ge/ads/page:[page_num]?limit=[limit]&object_type=all&currency_id=2&mode=list&order_by=date"
+    link = ENV['URL_IDS']
     page_num = 2 #1
-    max_page_limit = 500
+    max_page_limit = ENV['MAX_PAGE_LIMIT_FOR_IDS'].to_i
     min_page_limit = 100
 
     if @ad_limit.nil? || @ad_limit > max_page_limit
@@ -373,7 +373,7 @@ class PlaceGeAdGroup
     @ad_ids_scrape_errors = []
 
     #initiate hydra
-    hydra = Typhoeus::Hydra.new(max_concurrency: 10)
+    hydra = Typhoeus::Hydra.new(max_concurrency: ENV['HYDRA_CONCURRENT_CONNECTIONS'].to_i)
     Typhoeus::Config.user_agent = get_user_agent
 
     @total_to_process = @ad_ids.length

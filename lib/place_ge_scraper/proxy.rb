@@ -3,7 +3,7 @@ require_relative 'helper'
 
 module Proxy
   # list of proxies are taken from: https://www.proxy-list.download/api/v1
-  API_URL = 'https://www.proxy-list.download/api/v1/get?type=http&anon=elite&country='
+  API_URL = ENV['PROXY_API_URL']
   COUNTRIES = ['GE', 'AM', 'TR']
   FILE_PATH = 'proxies.csv'
 
