@@ -35,7 +35,7 @@ namespace :scraper do
         Rake.application.invoke_task("scraper:scrape_ad_ids_posted_today[#{limit}]")
       end
 
-      Rake.application.invoke_task('scraper:scrape_ads_flagged_unscraped')
+      Rake.application.invoke_task('scraper:scrape_ads_flagged_unscraped[true]')
       Rake.application.invoke_task('scraper:compress_html_copies')
 
       today = Date.today.strftime('%Y-%m-%d')
