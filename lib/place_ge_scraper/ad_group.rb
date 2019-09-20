@@ -347,18 +347,9 @@ class PlaceGeAdGroup
     run_hydra
 
     # if there were scraping errors, re-process the ads that had errors
-    if @ad_ids_scrape_errors.length > 0
+    if @ad_ids_scrape_errors.length > 0 && ENV['REPROCESS_ADS_WITH_ERRORS'] == 'true'
       ScraperLog.logger.info "There were scraping errors, trying to re-process the ads"
       email_rescraping_errors('1st', @ad_ids_scrape_errors.length, run_time(start, Time.now))
-      @start = Time.now
-      @ad_ids = @ad_ids_scrape_errors
-      run_hydra
-    end
-
-    # do it one more time just in case there were still errors
-    if @ad_ids_scrape_errors.length > 0
-      ScraperLog.logger.info "There were still scraping errors, trying one last time to re-process the ads"
-      email_rescraping_errors('2nd', @ad_ids_scrape_errors.length, run_time(start, Time.now))
       @start = Time.now
       @ad_ids = @ad_ids_scrape_errors
       run_hydra
