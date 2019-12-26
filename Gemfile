@@ -2,7 +2,7 @@ source 'https://rubygems.org'
 
 ruby "2.4.4"
 
-gem 'nokogiri', '~> 1.6.6.2'
+gem 'nokogiri', '~> 1.10.4'
 gem 'mysql2', '~> 0.3.18'
 gem 'dotenv', '~> 2.0.2'
 gem 'activerecord', '~> 4.2.10'
